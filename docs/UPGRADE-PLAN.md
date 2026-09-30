@@ -32,3 +32,12 @@ Score: 6/10 (was 5/10) — colors can be saved and the last color is remembered 
 - Accessibility: save toggle exposes state and names the color; saved dots labelled; profile links get link roles.
 - Advisories: `overrides.postcss ^8.5.28` clears the high-severity PostCSS advisory in Expo metro-config (minor bump). Remaining `image-size` (metro, bundler-only), `uuid` (via `xcode`) and `decode-uri-component` (via `query-string@7`) need an Expo SDK major upgrade; deliberately not auto-fixed.
 - Verified: typecheck, lint, 19 vitest tests, Android `expo export` bundle.
+
+## Done in this pass (pass 3)
+
+Score: 8/10 (was 7.5/10) — edge-case hunt in `lib/color.ts`.
+
+- Bug: contrast was shown with `toFixed(2)` next to the WCAG verdict, so #0078D7 on white (4.4989) read "4.50:1 · AA Large". `formatContrast` truncates, so the number never rounds across the 3 / 4.5 / 7 thresholds.
+- Bug: `parseColor("hsl(1.2.3, 50%, 50%)")` matched the loose `[\d.]+` pattern and returned the string "#NANNANNAN"; non-finite HSL parts are now rejected.
+- Hex input tolerates zero-width characters / BOM and full-width "＃ＦＦ００００".
+- Verified: typecheck, lint, 22 vitest tests, Android `expo export`.

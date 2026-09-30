@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-
 import {
   adjustLightness,
   contrastRatio,
+  formatContrast,
   formatHsl,
   formatRgb,
   hexToRgb,
@@ -125,7 +126,7 @@ export default function PickerScreen() {
             <Value
               key={fg}
               label={fg === "#FFFFFF" ? "White text" : "Black text"}
-              value={`${ratio.toFixed(2)}:1 · ${wcagRating(ratio)}`}
+              value={`${formatContrast(ratio)} · ${wcagRating(ratio)}`}
             />
           );
         })}

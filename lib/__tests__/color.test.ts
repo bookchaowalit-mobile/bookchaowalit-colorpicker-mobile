@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   adjustLightness,
   contrastRatio,
+  formatContrast,
   formatHsl,
   formatRgb,
   hexToRgb,
@@ -80,5 +81,26 @@ describe("adjustLightness", () => {
     expect(adjustLightness("#808080", 100)).toBe("#FFFFFF");
     expect(adjustLightness("#808080", -100)).toBe("#000000");
     expect(adjustLightness("#FF0000", -25)).toBe("#800000");
+  });
+});
+
+describe("pass 3 edge cases", () => {
+  it("never shows a contrast that rounds up past the threshold it fails", () => {
+    const ratio = contrastRatio("#0078D7", "#FFFFFF");
+    expect(ratio).toBeLessThan(4.5);
+    expect(wcagRating(ratio)).toBe("AA Large");
+    expect(formatContrast(ratio)).toBe("4.49:1");
+    expect(formatContrast(21)).toBe("21.00:1");
+    expect(formatContrast(6.999)).toBe("6.99:1");
+  });
+  it("rejects malformed HSL numbers instead of returning #NANNANNAN", () => {
+    expect(parseColor("hsl(1.2.3, 50%, 50%)")).toBeNull();
+    expect(parseColor("hsl(., 50%, 50%)")).toBeNull();
+    expect(parseColor("hsl(120, 5.0.0%, 50%)")).toBeNull();
+    expect(parseColor("hsl(120, 100%, 50%)")).toBe("#00FF00");
+  });
+  it("accepts full-width and zero-width-polluted hex input", () => {
+    expect(parseColor("＃ＦＦ００００")).toBe("#FF0000");
+    expect(parseColor("#abc​")).toBe("#AABBCC");
   });
 });

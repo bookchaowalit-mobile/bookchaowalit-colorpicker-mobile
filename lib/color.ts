@@ -19,7 +19,10 @@ const HEX_PATTERN = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
 /** Normalizes `abc`, `#abc`, `#AABBCC` to `#AABBCC`; returns null when invalid. */
 export function normalizeHex(input: string): string | null {
-  const match = HEX_PATTERN.exec(input.trim());
+  // NFKC folds full-width "＃ＦＦ００００" from CJK keyboards; pasted values may
+  // carry zero-width spaces or a BOM.
+  const cleaned = input.normalize("NFKC").replace(/[\u200B-\u200D\u2060\uFEFF]/g, "").trim();
+  const match = HEX_PATTERN.exec(cleaned);
   if (!match) return null;
   let digits = match[1];
   if (digits.length === 3) {
@@ -144,7 +147,9 @@ export function parseColor(input: string): string | null {
   const hsl = HSL_PATTERN.exec(text);
   if (hsl) {
     const [h, s, l] = hsl.slice(1, 4).map(Number);
-    if (s > 100 || l > 100) return null;
+    // "[\d.]+" also matches "1.2.3" or "."; Number() gives NaN, which used to
+    // produce the hex string "#NANNANNAN".
+    if (![h, s, l].every(Number.isFinite) || s > 100 || l > 100) return null;
     return rgbToHex(hslToRgb({ h, s, l }));
   }
   return null;
@@ -158,6 +163,15 @@ export function wcagRating(ratio: number): WcagRating {
   if (ratio >= 4.5) return "AA";
   if (ratio >= 3) return "AA Large";
   return "Fail";
+}
+
+/**
+ * Contrast ratio for display, truncated (not rounded) to 2 decimals so the
+ * number shown never contradicts the rating: #0078D7 on white is 4.4989,
+ * which `toFixed(2)` showed as "4.50" next to "AA Large".
+ */
+export function formatContrast(ratio: number): string {
+  return `${(Math.floor(ratio * 100) / 100).toFixed(2)}:1`;
 }
 
 /** Shifts lightness by `delta` percentage points (clamped to 0..100). */
