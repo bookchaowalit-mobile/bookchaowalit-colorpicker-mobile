@@ -11,13 +11,22 @@ import {
   rgbToHsl,
   wcagRating,
 } from "../../lib/color";
+import { valueCodec } from "../../lib/persist";
+import { isHexColor, isSavedColors, removeColor, saveColor } from "../../lib/saved";
+import { usePersistentState } from "../../lib/usePersistentState";
+
+const savedCodec = valueCodec(isSavedColors);
+const colorCodec = valueCodec(isHexColor);
 
 const PRESETS = ["#E53935", "#FB8C00", "#FDD835", "#43A047", "#1E88E5", "#8E24AA", "#212121"];
 
 export default function PickerScreen() {
-  const [input, setInput] = useState("#1E88E5");
-  const [color, setColor] = useState("#1E88E5");
-  const invalid = parseColor(input) === null;
+  const [color, setColor] = usePersistentState("picker.color.v1", "#1E88E5", colorCodec);
+  const [input, setInput] = useState<string | null>(null);
+  const [saved, setSaved] = usePersistentState<string[]>("picker.saved.v1", [], savedCodec);
+  const text = input ?? color;
+  const isSaved = saved.includes(color);
+  const invalid = parseColor(text) === null;
 
   const onChange = (text: string) => {
     setInput(text);
@@ -25,7 +34,7 @@ export default function PickerScreen() {
     if (parsed) setColor(parsed);
   };
   const pick = (hex: string) => {
-    setInput(hex);
+    setInput(null);
     setColor(hex);
   };
 
@@ -50,7 +59,7 @@ export default function PickerScreen() {
         autoCorrect={false}
         onChangeText={onChange}
         style={[styles.input, invalid && styles.inputError]}
-        value={input}
+        value={text}
       />
       {invalid && <Text style={styles.error}>Try #1E88E5, rgb(30, 136, 229) or hsl(208, 79%, 51%).</Text>}
 
@@ -67,6 +76,15 @@ export default function PickerScreen() {
       </View>
 
       <View style={styles.row}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={isSaved ? `Remove ${color} from saved colors` : `Save ${color}`}
+          accessibilityState={{ selected: isSaved }}
+          onPress={() => setSaved((list) => (isSaved ? removeColor(list, color) : saveColor(list, color)))}
+          style={styles.button}
+        >
+          <Text style={styles.buttonText}>{isSaved ? "★ Saved" : "☆ Save"}</Text>
+        </Pressable>
         <Pressable accessibilityRole="button" onPress={() => pick(adjustLightness(color, -10))} style={styles.button}>
           <Text style={styles.buttonText}>Darker</Text>
         </Pressable>
@@ -75,8 +93,26 @@ export default function PickerScreen() {
         </Pressable>
       </View>
 
+      {saved.length > 0 && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Saved colors</Text>
+          <View style={styles.presets}>
+            {saved.map((hex) => (
+              <Pressable
+                accessibilityLabel={`Use saved color ${hex}`}
+                accessibilityRole="button"
+                key={hex}
+                onPress={() => pick(hex)}
+                style={[styles.dot, { backgroundColor: hex }, hex === color && styles.dotActive]}
+              />
+            ))}
+          </View>
+        </View>
+      )}
+
       <View style={styles.card}>
         <Value label="HEX" value={color} />
+
         <Value label="RGB" value={formatRgb(rgb)} />
         <Value label="HSL" value={formatHsl(rgbToHsl(rgb))} />
       </View>
